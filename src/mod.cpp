@@ -68,6 +68,8 @@ static void on_set_daytime_post(ModContext*, void* args, void*, void*) {
     } else {
         env_light->daytime += 1.0f;
     }
+
+    dComIfGs_setTime(env_light->daytime);
 }
 
 extern "C" {
