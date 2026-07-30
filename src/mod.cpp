@@ -6,7 +6,6 @@
 #include "d/d_com_inf_game.h"
 #include "d/d_kankyo.h"
 #include "d/d_msg_object.h"
-#include "dusk/settings.h"
 #include "f_op/f_op_msg.h"
 
 #include <chrono>
@@ -29,7 +28,7 @@ static bool is_time_sync_stage(const char* stage_name) {
 }
 
 static bool should_sync_time(dScnKy_env_light_c* env_light) {
-    if (dusk::getSettings().game.speedrunMode || dKy_darkworld_check() || dComIfGp_event_runCheck()) {
+    if (dKy_darkworld_check() || dComIfGp_event_runCheck()) {
         return false;
     }
 
