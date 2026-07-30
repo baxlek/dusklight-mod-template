@@ -63,10 +63,22 @@ static void on_set_daytime_post(ModContext*, void* args, void*, void*) {
         diff_daytime += 360.0f;
     }
 
-    if (diff_daytime <= 1.0f) {
+    // True when game time slightly overshot device time (game is ahead by less than 2 degrees
+    // in the absolute sense, ruling out the midnight-crossing case where the raw difference
+    // would be negative and large).
+    const bool game_slightly_ahead = env_light->daytime > calendar_daytime &&
+                                     env_light->daytime - calendar_daytime < 2.0f;
+
+    if (game_slightly_ahead || (diff_daytime <= 1.0f && env_light->daytime <= calendar_daytime)) {
+        // Game is at or just behind the target with no midnight crossing needed; snap.
         env_light->daytime = calendar_daytime;
     } else {
+        // Game is behind the target or approaching midnight; advance by one step and clamp
+        // to [0, 360) so the lighting lookup never receives an out-of-range value.
         env_light->daytime += 1.0f;
+        if (env_light->daytime >= 360.0f) {
+            env_light->daytime -= 360.0f;
+        }
     }
 
     dComIfGs_setTime(env_light->daytime);
