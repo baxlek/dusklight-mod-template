@@ -5,6 +5,7 @@
 
 #include "d/d_com_inf_game.h"
 #include "d/d_kankyo.h"
+#include "d/d_kankyo_static.h"
 #include "d/d_msg_object.h"
 #include "f_op/f_op_msg.h"
 
@@ -69,15 +70,32 @@ static void on_set_daytime_post(ModContext*, void* args, void*, void*) {
     const bool game_slightly_ahead = env_light->daytime > calendar_daytime &&
                                      env_light->daytime - calendar_daytime < 2.0f;
 
-    if (game_slightly_ahead || (diff_daytime <= 1.0f && env_light->daytime <= calendar_daytime)) {
-        // Game is at or just behind the target with no midnight crossing needed; snap.
+    // True when the game just crossed midnight but the device hasn't yet: game is within
+    // 2 degrees past midnight while the device is within 2 degrees before midnight.
+    // Without this check the hook would advance game time through a full 360-degree cycle
+    // chasing the large numeric gap, causing a visible full-day spin before stopping.
+    const bool game_just_past_midnight = env_light->daytime < 2.0f && calendar_daytime > 358.0f;
+
+    if (game_slightly_ahead || game_just_past_midnight ||
+        (diff_daytime <= 1.0f && env_light->daytime <= calendar_daytime)) {
+        // Game is at or just past the target; snap to device time.
+        // If the game crossed midnight before the device did, revert that crossing so mDate
+        // stays consistent with the pre-midnight position. The natural game tick will re-cross
+        // midnight (and re-increment mDate) once the device also passes midnight.
+        if (game_just_past_midnight) {
+            env_light->mDate--;
+            dComIfGs_setDate(env_light->mDate);
+        }
         env_light->daytime = calendar_daytime;
     } else {
-        // Game is behind the target or approaching midnight; advance by one step and clamp
-        // to [0, 360) so the lighting lookup never receives an out-of-range value.
+        // Game is behind the target; advance by one step and wrap to [0, 360).
         env_light->daytime += 1.0f;
         if (env_light->daytime >= 360.0f) {
             env_light->daytime -= 360.0f;
+            // Crossed midnight during catch-up; keep mDate and the day-flag in sync.
+            env_light->mDate++;
+            dComIfGs_setDate(env_light->mDate);
+            dKankyo_DayProc();
         }
     }
 
