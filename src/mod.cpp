@@ -6,8 +6,6 @@
 #include "d/d_com_inf_game.h"
 #include "d/d_kankyo.h"
 #include "d/d_kankyo_static.h"
-#include "d/d_msg_object.h"
-#include "f_op/f_op_msg.h"
 
 #include <chrono>
 #include <cstring>
@@ -20,24 +18,14 @@ IMPORT_SERVICE(HookService, svc_hook);
 
 DEFINE_HOOK(&dScnKy_env_light_c::setDaytime, SetDaytime);
 
-static bool is_time_sync_stage(const char* stage_name) {
-    return stage_name != nullptr &&
-           (!std::strcmp(stage_name, "F_SP00") || !std::strcmp(stage_name, "F_SP103") ||
-               !std::strcmp(stage_name, "F_SP104") || !std::strcmp(stage_name, "F_SP109") ||
-               !std::strcmp(stage_name, "F_SP111") || !std::strcmp(stage_name, "F_SP118") ||
-               !std::strcmp(stage_name, "F_SP128"));
-}
-
 static bool should_sync_time(dScnKy_env_light_c* env_light) {
-    if (dKy_darkworld_check() || dComIfGp_event_runCheck()) {
+    if (dKy_darkworld_check()) {
         return false;
     }
 
-    msg_class* msg = dMsgObject_c::getActor();
-    const bool message_active = msg != nullptr && msg->mode >= 2;
     const bool normal_time_progresses =
-        dComIfGp_roomControl_getTimePass() && !env_light->field_0x130a && !message_active;
-    return normal_time_progresses || is_time_sync_stage(dComIfGp_getStartStageName());
+        !env_light->field_0x130a;
+    return normal_time_progresses;
 }
 
 static void on_set_daytime_post(ModContext*, void* args, void*, void*) {
